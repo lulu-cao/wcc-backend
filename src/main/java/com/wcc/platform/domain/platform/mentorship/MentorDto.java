@@ -10,8 +10,10 @@ import com.wcc.platform.domain.exceptions.InvalidMentorException;
 import com.wcc.platform.domain.platform.SocialNetwork;
 import com.wcc.platform.domain.platform.member.MemberDto;
 import com.wcc.platform.domain.platform.member.ProfileStatus;
+import com.wcc.platform.domain.platform.type.MemberType;
 import com.wcc.platform.domain.resource.MentorResource;
 import io.micrometer.common.util.StringUtils;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -51,6 +53,17 @@ public class MentorDto extends MemberDto {
   private Boolean acceptMale;
   private Boolean acceptPromotion;
   private Boolean isWomen;
+  
+  @Override
+  @Schema(
+      accessMode = Schema.AccessMode.READ_ONLY,
+      allowableValues = {"MENTOR"},
+      example = "[\"MENTOR\"]"
+  )
+  @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+  public List<MemberType> getMemberTypes() {
+    return List.of(MemberType.MENTOR);
+  }
 
   /** Mentor Builder. */
   @SuppressWarnings("PMD.ExcessiveParameterList")
@@ -88,7 +101,7 @@ public class MentorDto extends MemberDto {
         country,
         city,
         companyName,
-        null, // TODO to be fixe this will cleanup member types
+        List.of(MemberType.MENTOR),
         images,
         network,
         pronouns,

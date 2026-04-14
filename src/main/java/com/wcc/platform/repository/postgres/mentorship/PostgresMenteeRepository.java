@@ -24,13 +24,17 @@ public class PostgresMenteeRepository implements MenteeRepository {
   private static final String SQL_GET_BY_ID = "SELECT * FROM mentees WHERE mentee_id = ?";
   private static final String SQL_DELETE_BY_ID = "DELETE FROM mentees WHERE mentee_id = ?";
   private static final String SELECT_ALL_MENTEES = "SELECT * FROM mentees";
+  private static final String SELECT_BY_STATUS =
+      "SELECT * FROM mentees WHERE mentees_profile_status = ?";
+  private static final String SQL_SET_STATUS =
+      "UPDATE mentees SET mentees_profile_status = ? WHERE mentee_id = ?";
   private static final String SQL_INSERT_MENTEE =
       "INSERT INTO mentees (mentee_id, mentees_profile_status, bio, years_experience, "
           + "spoken_languages, available_hs_month) VALUES (?, ?, ?, ?, ?, ?)";
   private static final String SQL_PROG_LANG_INSERT =
-      "INSERT INTO mentee_languages (mentee_id, language_id) VALUES (?, ?)";
+      "INSERT INTO mentee_languages (mentee_id, language_id, proficiency_level_id) VALUES (?, ?, ?)";
   private static final String SQL_TECH_AREAS_INSERT =
-      "INSERT INTO mentee_technical_areas (mentee_id, technical_area_id) VALUES (?, ?)";
+      "INSERT INTO mentee_technical_areas (mentee_id, technical_area_id, proficiency_level_id) VALUES (?, ?, ?)";
   private static final String INSERT_FOCUS_AREAS =
       "INSERT INTO mentee_mentorship_focus_areas (mentee_id, focus_area_id) VALUES (?, ?)";
   private static final String SQL_UPDATE_MENTEE =
@@ -131,6 +135,20 @@ public class PostgresMenteeRepository implements MenteeRepository {
     jdbc.update(SQL_DELETE_BY_ID, menteeId);
   }
 
+  @Override
+  public List<Mentee> findByStatus(final ProfileStatus status) {
+    return jdbc.query(SELECT_BY_STATUS, (rs, rowNum) -> menteeMapper.mapRowToMentee(rs),
+        status.getStatusId());
+  }
+
+  @Override
+  public Mentee updateProfileStatus(final Long menteeId, final ProfileStatus status) {
+    jdbc.update(SQL_SET_STATUS, status.getStatusId(), menteeId);
+    return findById(menteeId)
+        .orElseThrow(
+            () -> new MenteeNotSavedException("Mentee not found after status update: " + menteeId));
+  }
+
   private void updateMenteeDetails(final Mentee mentee, final Long memberId) {
     final var profileStatus = mentee.getProfileStatus();
     final var skills = mentee.getSkills();
@@ -165,14 +183,22 @@ public class PostgresMenteeRepository implements MenteeRepository {
   /** Inserts technical areas for the mentee in mentee_technical_areas table. */
   private void insertTechnicalAreas(final Skills menteeSkills, final Long memberId) {
     for (final var areaProf : menteeSkills.areas()) {
-      jdbc.update(SQL_TECH_AREAS_INSERT, memberId, areaProf.technicalArea().getTechnicalAreaId());
+      jdbc.update(
+          SQL_TECH_AREAS_INSERT,
+          memberId,
+          areaProf.technicalArea().getTechnicalAreaId(),
+          areaProf.proficiencyLevel().getLevelId());
     }
   }
 
   /** Inserts programming languages for a mentee in mentee_languages table. */
   private void insertLanguages(final Skills menteeSkills, final Long memberId) {
     for (final var langProf : menteeSkills.languages()) {
-      jdbc.update(SQL_PROG_LANG_INSERT, memberId, langProf.language().getLangId());
+      jdbc.update(
+          SQL_PROG_LANG_INSERT,
+          memberId,
+          langProf.language().getLangId(),
+          langProf.proficiencyLevel().getLevelId());
     }
   }
 

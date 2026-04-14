@@ -4,7 +4,9 @@ Code review workflow that posts inline comments on a pull request using the GitH
 
 ## When to apply
 
-Run this workflow when the user asks you to review a PR, check a pull request, or `/pr-review`.
+Run this workflow when the user asks you to review a PR or check a pull
+request, or uses an agent-specific shortcut such as `/pr-review` in Claude
+Code.
 
 ## Step 1 — Fetch PR data
 
@@ -53,7 +55,20 @@ Apply only the checks relevant to what the PR actually changed.
 - Test names follow Given-When-Then `@DisplayName` format (Java) or descriptive `it()`/`test()` (JS)
 - Mocks used only where appropriate; integration tests hit real infrastructure
 
-## Step 4 — Post inline comments
+## Step 4 — Preview comments before posting
+
+Before making any GitHub API calls, present all planned inline comments to the user in this format:
+
+```
+### `<file>` — line <N> (<brief label>)
+**[CRITICAL|WARNING|INFO]** <comment body>
+```
+
+Then ask: **"Shall I post these as-is, or would you like to adjust any of them?"**
+
+Wait for explicit confirmation before proceeding to Step 5.
+
+## Step 5 — Post inline comments
 
 Use `gh api` to post comments anchored to exact changed lines:
 
@@ -75,7 +90,31 @@ gh api repos/<owner>/<repo>/pulls/<number>/comments \
 
 Prefer line-level comments over top-level summary comments.
 
-## Step 5 — Comment quality bar
+## Step 6 — Submit review decision
+
+After posting all inline comments, submit a formal review decision:
+
+```bash
+gh api repos/<owner>/<repo>/pulls/<number>/reviews \
+  -X POST \
+  -f commit_id='<sha>' \
+  -f body='<summary>' \
+  -f event='<event>'
+```
+
+**Decision rules:**
+
+| Condition | `event` value |
+|---|---|
+| No `[CRITICAL]` findings | `APPROVE` |
+| Any `[CRITICAL]` finding | `REQUEST_CHANGES` |
+| Uncertain / needs author input | `COMMENT` |
+
+When approving, write a short encouraging body (2–3 sentences) summarising what looks good and calling out any `[WARNING]` or `[INFO]` items the author may want to address as a follow-up.
+
+When requesting changes, clearly list the `[CRITICAL]` items that must be resolved before merge.
+
+## Step 7 — Comment quality bar
 
 Every comment must:
 - State the **concrete risk** (what could go wrong)
